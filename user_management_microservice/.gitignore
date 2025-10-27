@@ -1,0 +1,28 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs
+*.log
+
+# dotenv
+.env
+
+# Docker
+*.pid
+
+# Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Coverage/test/output (αν προσθέσεις tests αργότερα)
+coverage/
+dist/
+build/
+
+# Optional: lock file (μόνο αν δεν θέλεις να το commitάρεις)
+# package-lock.json

@@ -1,0 +1,156 @@
+
+services:
+  # Users Database (MariaDB)
+
+  api-gateway:
+    build:
+      context: ./api_gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - JWT_SECRET=your_secret_key
+    depends_on:
+      - users-service
+    volumes:
+      - ./api_gateway:/usr/src/app
+      - /usr/src/app/node_modules  
+
+
+  
+  users-db:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=example
+      - MYSQL_DATABASE=clearSKY_users
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./user_management_microservice/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - users_db_data:/var/lib/mysql
+
+  # User Management Microservice
+  users-service:
+    build: 
+      context: ./user_management_microservice
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=users-db
+      - DB_USER=root
+      - DB_PASSWORD=example
+      - DB_NAME=clearSKY_users
+      - DB_PORT=3306
+      - JWT_SECRET=your_secret_key
+    depends_on:
+      - users-db
+    volumes:
+      - ./user_management_microservice:/usr/src/app
+      - /usr/src/app/node_modules
+
+  # Grades Microservice (Initial Grades)
+  grades-db:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=example
+      - MYSQL_DATABASE=clearSKY_grades
+    ports:
+      - "3308:3306"
+    volumes:
+      - ./grades_management_microservice/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - grades_db_data:/var/lib/mysql
+
+  grades-service:
+    build:
+      context: ./grades_management_microservice
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq
+      - DB_HOST=grades-db
+      - DB_USER=root
+      - DB_PASSWORD=example
+      - DB_NAME=clearSKY_grades
+      - DB_PORT=3306
+    depends_on:
+      - grades-db
+      - rabbitmq
+    command: npm start
+    volumes:
+      - ./grades_management_microservice:/usr/src/app
+      - /usr/src/app/node_modules
+
+  review-db:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=example
+      - MYSQL_DATABASE=clearSKY_reviews
+    ports:
+      - "3309:3306"
+    volumes:
+      - ./review_management_microservice/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - review_db_data:/var/lib/mysql
+
+  review-service:
+    build:
+      context: ./review_management_microservice
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq
+      - DB_HOST=review-db
+      - DB_USER=root
+      - DB_PASSWORD=example
+      - DB_NAME=clearSKY_reviews
+      - DB_PORT=3306
+    depends_on:
+      - review-db
+      - rabbitmq
+    command: npm start
+    volumes:
+      - ./review_management_microservice:/usr/src/app
+      - /usr/src/app/node_modules
+
+
+  # Frontend Service (e.g., React, Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api-gateway
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"       # AMQP
+      - "15672:15672"     # Web UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: always
+
+volumes:
+  users_db_data:
+  grades_db_data:
+  review_db_data:
+  rabbitmq_data:
